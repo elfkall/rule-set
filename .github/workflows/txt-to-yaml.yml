@@ -1,0 +1,37 @@
+name: Generate YAML from TXT files
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'   # 每12小时自动运行一次
+  workflow_dispatch:         # 手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Generate result.yaml from all txt files
+        run: |
+          # 查找所有txt文件，合并为yaml格式
+          OUT=result.yaml
+          echo "payload:" > "$OUT"
+          # 遍历所有txt文件
+          for file in *.txt; do
+            grep '^DOMAIN,' "$file" | cut -d',' -f2
+          done | sort -u | while read domain; do
+            echo "  - DOMAIN-SUFFIX,$domain" >> "$OUT"
+          done
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          if [[ -n "$(git status --porcelain result.yaml)" ]]; then
+            git add result.yaml
+            git commit -m "自动更新 result.yaml from all txt files"
+            git push
+          else
+            echo "No changes to commit."
