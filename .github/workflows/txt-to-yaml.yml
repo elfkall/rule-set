@@ -3,7 +3,7 @@ name: Generate YAML from TXT files in ruleset/surge
 on:
   schedule:
     - cron: '0 */12 * * *'    # 每12小时自动运行一次
-  workflow_dispatch:          # 可手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -30,4 +30,7 @@ jobs:
           if [[ -n "$(git status --porcelain result.yaml)" ]]; then
             git add result.yaml
             git commit -m "Auto update result.yaml from ruleset/surge/*.txt"
-  
+            git push
+          else
+            echo "No changes to commit."
+          fi
