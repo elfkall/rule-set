@@ -32,5 +32,7 @@ jobs:
               git checkout $branch
               git merge upstream/$branch --allow-unrelated-histories || true
             fi
+            git pull origin $branch --rebase || true    # 自动 rebase 本地和远程
             git push origin $branch
           done
+   
