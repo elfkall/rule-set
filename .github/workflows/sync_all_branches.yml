@@ -1,9 +1,13 @@
-name: Sync all branches from upstream
+name: Sync upstream
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时自动同步一次
-  workflow_dispatch:      # 支持手动触发
+    - cron: '0 2 * * *'        # 每天凌晨2点定时运行
+  workflow_dispatch:            # 可手动触发
+
+env:
+  UPSTREAM_REPO: QuixoticHeart/rule-set    # 需替换为原仓库路径, 例: torvalds/linux
+  BRANCHES: main,dev,release           # 需替换为你要同步的分支（逗号分隔）
 
 jobs:
   sync:
@@ -12,33 +16,38 @@ jobs:
     steps:
       - name: Checkout your repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                   # 拉取全部提交历史，以保证可合并
 
-      - name: Set up git config
+      - name: Set up git user
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
 
-      - name: Add upstream and fetch all branches
+      - name: Add upstream repo
         run: |
-          git remote add upstream https://github.com/QuixoticHeart/rule-set.git
-          git fetch upstream --prune
+          git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git
+          git fetch upstream --all
 
-      - name: Sync all branches
+      - name: Sync branches from upstream
         run: |
-          for branch in $(git branch -r | grep 'upstream/' | grep -v 'HEAD' | sed 's/upstream\///'); do
+          IFS=',' read -ra BRLIST <<< "${BRANCHES}"
+          for branch in "${BRLIST[@]}"; do
             echo "Syncing branch: $branch"
-            if ! git show-ref --verify --quiet refs/heads/$branch; then
-              git checkout -b $branch upstream/$branch
-            else
+            # 检查分支是否存在
+            if git show-ref --verify --quiet refs/heads/$branch; then
               git checkout $branch
-              git merge upstream/$branch --allow-unrelated-histories || (
-                # 冲突时用upstream强制覆盖
-                git checkout upstream/$branch -- .
-                git add .
-                git commit -m "Resolved conflicts by using upstream version"
-              )
+            else
+              # 如果本地没有分支，创建并同步 upstream 的
+              git checkout -b $branch upstream/$branch || continue
             fi
-            # 这里使用 --force 强制覆盖远端分支
-            git push origin $branch --force
+
+            # 拉取 upsteam/$branch 并合并，不强推，不会删你自己的新文件。
+            git fetch upstream $branch
+            # 合并
+            git merge upstream/$branch --allow-unrelated-histories -m "Sync upstream/$branch" || \
+              git merge upstream/$branch -X ours --allow-unrelated-histories -m "Sync upstream/$branch (ours)"
+            # 推送
+            git push origin $branch
           done
 
