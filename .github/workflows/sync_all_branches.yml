@@ -6,8 +6,8 @@ on:
   workflow_dispatch:            # 可手动触发
 
 env:
-  UPSTREAM_REPO: QuixoticHeart/rule-set    # 需替换为原仓库路径, 例: torvalds/linux
-  BRANCHES: main,dev,release           # 需替换为你要同步的分支（逗号分隔）
+  UPSTREAM_REPO: QuixoticHeart/rule-set
+  BRANCHES: main,dev,release
 
 jobs:
   sync:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout your repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0                   # 拉取全部提交历史，以保证可合并
+          fetch-depth: 0
 
       - name: Set up git user
         run: |
@@ -27,7 +27,7 @@ jobs:
       - name: Add upstream repo
         run: |
           git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git
-          git fetch upstream --all
+          git fetch upstream       # 修正为不含 --all，只这样写即可
 
       - name: Sync branches from upstream
         run: |
@@ -50,4 +50,3 @@ jobs:
             # 推送
             git push origin $branch
           done
-
