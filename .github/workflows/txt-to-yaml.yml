@@ -1,36 +1,52 @@
-name: Generate YAML from TXT files in ruleset/surge
+name: Convert surge/*.list to surge/*.yaml
 
 on:
-  schedule:
-    - cron: '0 */12 * * *'    # 每12小时自动运行一次
   workflow_dispatch:
+  schedule:
+    - cron: '0 */12 * * *'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate result.yaml
+      - name: Convert all .list to .yaml
         run: |
-          OUT=result.yaml
-          echo "payload:" > "$OUT"
-          for file in ruleset/surge/*.txt; do
-            grep '^DOMAIN,' "$file" | cut -d',' -f2
-          done | sort -u | while read domain; do
-            echo "  - DOMAIN-SUFFIX,$domain" >> "$OUT"
-          done
+          python3 <<'EOF'
+import glob
+import os
 
-      - name: Commit and Push result.yaml
+types = ['DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'IP-CIDR', 'IP-ASN']
+
+for txtfile in glob.glob('surge/*.list'):
+    yaml_file = os.path.splitext(txtfile)[0] + '.yaml'
+    entries = []
+    with open(txtfile, encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            for t in types:
+                if line.startswith(t+','):
+                    entries.append(line)
+                    break
+    entries = sorted(set(entries))
+    with open(yaml_file, 'w', encoding='utf-8') as fout:
+        fout.write('payload:\n')
+        for item in entries:
+            fout.write(f'  - {item}\n')
+EOF
+
+      - name: Commit and Push YAML files
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          if [[ -n "$(git status --porcelain result.yaml)" ]]; then
-            git add result.yaml
-            git commit -m "Auto update result.yaml from ruleset/surge/*.txt"
+          if [[ -n "$(git status --porcelain surge/*.yaml)" ]]; then
+            git add surge/*.yaml
+            git commit -m "Auto update yaml files from *.list"
             git push
           else
-            echo "No changes to commit."
+            echo "No YAML files updated."
           fi
