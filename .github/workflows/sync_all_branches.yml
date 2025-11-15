@@ -31,8 +31,14 @@ jobs:
               git checkout -b $branch upstream/$branch
             else
               git checkout $branch
-              git merge upstream/$branch --allow-unrelated-histories || true
+              # 尝试合并upstream/$branch
+              git merge upstream/$branch --allow-unrelated-histories || (
+                echo "Conflict, using upstream version for all files"
+                git checkout upstream/$branch -- .
+                git add .
+                git commit -m "Resolved conflicts by using upstream version"
+              )
             fi
-            git pull origin $branch --rebase || true
             git push origin $branch
           done
+
