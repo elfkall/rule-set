@@ -17,7 +17,6 @@ jobs:
         run: |
           OUT=result.yaml
           echo "payload:" > "$OUT"
-          # 遍历 ruleset/surge 目录下所有 txt 文件
           for file in ruleset/surge/*.txt; do
             grep '^DOMAIN,' "$file" | cut -d',' -f2
           done | sort -u | while read domain; do
@@ -28,10 +27,7 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          # 提交到当前分支
           if [[ -n "$(git status --porcelain result.yaml)" ]]; then
             git add result.yaml
             git commit -m "Auto update result.yaml from ruleset/surge/*.txt"
-            git push
-          else
-            echo "No changes to commit."
+  
