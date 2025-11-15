@@ -25,11 +25,11 @@ jobs:
         run: |
           for branch in $(git branch -r | grep 'upstream/' | grep -v 'HEAD' | sed 's/upstream\///'); do
             echo "Syncing branch: $branch"
-            # 如果该分支在本地没有，先创建并追踪
-            if ! git branch | grep "^  $branch$" ; then
-              git branch --track $branch upstream/$branch || git checkout -b $branch upstream/$branch
+            if ! git show-ref --verify --quiet refs/heads/$branch; then
+              git checkout -b $branch upstream/$branch
+            else
+              git checkout $branch
+              git merge upstream/$branch --allow-unrelated-histories || true
             fi
-            git checkout $branch
-            git merge upstream/$branch --allow-unrelated-histories || true
             git push origin $branch
           done
